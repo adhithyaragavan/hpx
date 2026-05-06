@@ -72,8 +72,9 @@ void test_execute()
     hpx::thread::id parent_id = hpx::this_thread::get_id();
 
     ex::thread_pool_scheduler sched{};
-    ex::execute(sched,
-        [parent_id]() { HPX_TEST_NEQ(hpx::this_thread::get_id(), parent_id); });
+    ex::schedule(sched) | ex::then([parent_id]() {
+        HPX_TEST_NEQ(hpx::this_thread::get_id(), parent_id);
+    });
 }
 
 struct check_context_receiver
@@ -554,11 +555,13 @@ void test_bulk_starts_on()
 
         // Test starts_on pattern: bulk operation with scheduler in environment
         // Use start_on to provide scheduler through environment
-        auto bulk_sender = ex::continues_on(
-            ex::thread_pool_scheduler{}, ex::just() | ex::bulk(n, [&](int i) {
-                ++v[i];
-                HPX_TEST_NEQ(parent_id, hpx::this_thread::get_id());
-            }));
+        auto bulk_sender = ex::continues_on(ex::just() |
+                ex::bulk(n,
+                    [&](int i) {
+                        ++v[i];
+                        HPX_TEST_NEQ(parent_id, hpx::this_thread::get_id());
+                    }),
+            ex::thread_pool_scheduler{});
 
         tt::sync_wait(std::move(bulk_sender));
 
